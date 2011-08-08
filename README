@@ -1,0 +1,6 @@
+ZMQ Reactor C++ library.
+Provides implementation of Reactor pattern for ZMQ library.
+Supports two different kinds of reactors: static and dynamic.
+Static reactor is fast, as it's handlers are bound to sockets positions at compile-time, and no runtime overhead for dispatching occurs. But all the functions must be defined at compile time.
+Dynamic reactor is more flexible, it allows add/remove handlers of any type at runtime, but it imposes runtime overhead of dynamic memory allocation on adding the handler, and a virtual call on handler's invocation.
+
