@@ -26,7 +26,7 @@ namespace ZmqReactor
   {
   private:
 
-    typedef std::tr1::function<bool (const ZmqReactor::Arg&)> HandlerFun;
+    typedef std::tr1::function<bool (ZmqReactor::Arg)> HandlerFun;
     typedef std::vector<HandlerFun> HandlersVec;
 
     HandlersVec handlers_;
