@@ -81,12 +81,14 @@ namespace ZmqReactor
       item.revents = 0;
 
       poll_items_.push_back(item);
+      sockets_.push_back(&socket);
     }
 
     void
     ReactorBase::remove_from(int idx)
     {
       poll_items_.resize(idx);
+      sockets_.resize(idx);
     }
 
     void
@@ -99,6 +101,7 @@ namespace ZmqReactor
       item.revents = 0;
 
       poll_items_.push_back(item);
+      sockets_.push_back(0);
     }
   }
 }//NS

@@ -38,6 +38,8 @@ namespace ZmqReactor
 
       PollItemsVec poll_items_;
 
+      std::vector<zmq::socket_t*> sockets_;
+
       /**
        * Perform zmq poll once.
        * @return number of events matched.
@@ -51,11 +53,8 @@ namespace ZmqReactor
       inline bool
       call_handler(FunT& fun, int item_num)
       {
-        zmq::socket_t* sock = poll_items_[item_num].socket ?
-          static_cast<zmq::socket_t*>(
-            static_cast<void*>(&(poll_items_[item_num].socket))) : 0;
         Arg arg = {
-          sock,
+          sockets_[item_num],
           poll_items_[item_num].fd,
           poll_items_[item_num].revents
         };
