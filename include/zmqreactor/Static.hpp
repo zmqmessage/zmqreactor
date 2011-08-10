@@ -39,15 +39,17 @@ namespace ZmqReactor
   {
   public:
     /**
-     * Launches polling loop with given timeout.
-     * Method returns:
-     * ERROR if ZMQ poll error occurs
-     * NONE_MATCHED
-     * If timeout == -1,
+     * @brief Perform poll operations.
+     *
+     * Perform polls until either some handler cancels processing
+     * (by returning false), timeout expires or some zmq poll error occurs.
      */
     virtual PollResult
     run(long timeout = -1) = 0;
 
+    /**
+     * @brief Perform one poll operation.
+     */
     inline
     PollResult
     operator()(long timeout = -1)
@@ -78,8 +80,9 @@ namespace ZmqReactor
     }
 
     /**
-     * Concrete static reactor, should be created indirectly, by calling
-     * make_static functions
+     * @brief Concrete static reactor parameterized with tuple of handlers.
+     *
+     * should be created indirectly, by calling \ref make_static functions
      */
     template <typename FunTupleT, int Size>
     class StaticReactor : public StaticReactorBase
@@ -132,6 +135,11 @@ namespace ZmqReactor
 
   ///static reactor makers
 
+  /**
+   * Create static reactor for given sockets, handlers and ZMQ events.
+   * Handler functor must be of signature bool (Arg)
+   * @return auto-pointer to dynamically allocated concrete reactor.
+   */
   template <typename Fun1>
   inline
   StaticPtr
@@ -144,6 +152,9 @@ namespace ZmqReactor
     return p;
   }
 
+  /**
+   * @overload
+   */
   template <typename Fun1, typename Fun2>
   inline
   StaticPtr
@@ -160,6 +171,9 @@ namespace ZmqReactor
     return p;
   }
 
+  /**
+   * @overload
+   */
   template <typename Fun1, typename Fun2>
   inline
   StaticPtr
@@ -172,6 +186,9 @@ namespace ZmqReactor
     );
   }
 
+  /**
+   * @overload
+   */
   template <typename Fun1, typename Fun2, typename Fun3>
   inline
   StaticPtr
@@ -190,6 +207,9 @@ namespace ZmqReactor
     return p;
   }
 
+  /**
+   * @overload
+   */
   template <typename Fun1, typename Fun2, typename Fun3>
   inline
   StaticPtr

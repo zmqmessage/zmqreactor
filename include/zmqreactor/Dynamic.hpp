@@ -34,7 +34,8 @@ namespace ZmqReactor
   public:
 
     /**
-     * Add poll handler for zmq socket.
+     * @brief Add poll handler for zmq socket.
+     *
      * @tparam FunT functor with signature: bool (Arg);
      * Returns true to continue polling, false to break.
      * @param socket bound socket
@@ -50,10 +51,11 @@ namespace ZmqReactor
     }
 
     /**
-     * Add poll handler for some file descriptor.
+     * @brief Add poll handler for some file descriptor.
+     *
      * Used for non-zmq pollable actions.
      * @tparam FunT functor with signature: bool (Arg);
-     * Returns true to continue polling, false to break.
+     * FunT returns true to continue polling, false to break.
      * @param fd unix file descriptor
      * @param events zmq events mask to handle, for example ZMQ_POLLIN
      * @param fun functor. Must be copyable.
@@ -67,6 +69,7 @@ namespace ZmqReactor
     }
 
     /**
+     * @overload
      * Overload for events = ZMQ_POLLIN
      */
     template <typename FunT>
@@ -76,6 +79,7 @@ namespace ZmqReactor
     }
 
     /**
+     * @overload
      * Overload for events = ZMQ_POLLIN
      */
     template <typename FunT>
@@ -84,13 +88,17 @@ namespace ZmqReactor
       add_handler(fd, ZMQ_POLLIN, fun);
     }
 
+    /**
+     * @brief Get number of registered handlers
+     */
     inline size_t
     num_handlers() const {
       return handlers_.size();
     }
 
     /**
-     * Removes all handlers starting from idx.
+     * @brief Removes all handlers starting from idx.
+     *
      * i.e. if idx is 2:
      * handlers before: [0, 1, 2, 3]
      * handlers after: [0, 1]
@@ -103,15 +111,16 @@ namespace ZmqReactor
     }
 
     /**
-     * Perform one poll operation.
+     * @brief Perform one poll operation.
      */
     PollResult
     operator()(long timeout = -1);
 
     /**
-     * Perform poll operations
-     * until some handler cancels processing (by returning false),
-     * timeout expires or some zmq poll error occurs.
+     * @brief Perform poll operations.
+     *
+     * Perform polls until either some handler cancels processing
+     * (by returning false), timeout expires or some zmq poll error occurs.
      */
     PollResult
     run(long timeout = -1);

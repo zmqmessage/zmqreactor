@@ -15,7 +15,8 @@
 
 /**
  * @namespace ZmqReactor
- * @brief Main namespace: both Static and Dynamic reactors reside here.
+ * @brief Main namespace: both \ref StaticReactorBase "Static"
+ * and Dynamic reactors reside here.
  */
 namespace ZmqReactor
 {

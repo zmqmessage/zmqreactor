@@ -14,8 +14,23 @@ namespace ZmqReactor
    */
   struct Arg
   {
+    /**
+     * @brief Pointer to original ZMQ socket given when handlers have been configured
+     *
+     * Set to 0 if handler is set to file descriptor
+     */
     zmq::socket_t* socket;
+    /**
+     * @brief Original file descriptor given when handlers have been configured
+     *
+     * Set to 0 if handler is set to ZMQ socket
+     */
     int fd;
+    /**
+     * @brief Bitwise mask of triggered events:
+     *
+     * Possible constants: ZMQ_POLLIN, ZMQ_POLLOUT or ZMQ_POLLERR
+     */
     short events;
   };
 
@@ -25,7 +40,22 @@ namespace ZmqReactor
    */
   enum PollResult
   {
-    ERROR, NONE_MATCHED, CANCELLED, OK
+    /**
+     * ZMQ poll error occured, no events triggered
+     */
+    ERROR,
+    /**
+     * No events are matched, no handlers called, timeout elapsed
+     */
+    NONE_MATCHED,
+    /**
+     * Processing has been canceled by some handlers (it has returned false)
+     */
+    CANCELLED,
+    /**
+     * Operation finished normally: events matched, handlers called
+     */
+    OK
   };
 
   /**
