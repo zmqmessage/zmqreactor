@@ -1,6 +1,7 @@
 /** \mainpage ZmqReactor C++ Library
-Provides implementation of
-<a class="el" href="http://en.wikipedia.org/wiki/Reactor_pattern">Reactor pattern</a> for ZMQ library.
+Provides C++ implementation of
+<a class="el" href="http://en.wikipedia.org/wiki/Reactor_pattern">Reactor pattern</a>
+for <a class="el" href="http://www.zeromq.org/">&Oslash;MQ</a> library.
 
 <h3>Main features:</h3>
 <ul>
@@ -19,15 +20,22 @@ Provides implementation of
   </ul>
 </li>
 <li>
-  Support handler of any type (function pointers, functor objects)
+  Supports handlers of any type (function pointers, functor objects)
+</li>
+<li>
+  Supports handlers either for ZMQ sockets and for native file descriptors (currently Dynamic reactor only)
+</li>
+<li>
+  May perform one poll operation or infinite poll loop.
+</li>
+<li>
+  Handlers may request poll loop termination by return value (just return false).
 </li>
 <li>
   Polling with timeout
-  (<a class="el" href="http://www.zeromq.org/topics:zmq-poll-workaround">ZMQ workaround</a> implemented)
+  (<a class="el" href="http://www.zeromq.org/topics:zmq-poll-workaround">ZMQ workaround</a> is implemented)
 </li>
 </ul>
-
-REMOVE ME:
 
 <div class="zm_toc">
 <h3>Table of contents</h3>
@@ -97,9 +105,9 @@ over plain zeromq poll interface.
 To measure this overhead we may use \ref tests/ReactorsTest.cpp "ReactorsTest"
 with huge number of iterations and see the consumed time for each type of reactor.
 
-We have made 10 launches with 1000000 iterations each and got the following summary
+We have made 10 launches with 1000000 iterations each and got the following summary (in seconds)
 
-<table>
+<table cellspacing=0 cellpadding=2>
 <tr>
   <th>Launch</th><th>Dynamic</th><th>Static</th><th>Raw poll</th>
 </tr>

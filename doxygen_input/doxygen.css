@@ -498,7 +498,7 @@ HR { background-color: #e09060; }
 }
 
 DIV.zm_toc {
-  background-color: #fbf8d0;
+  background-color: #fbeed0;
   border: thin dotted #808000;
   padding-left: 5px; width : 95%;
   border-width: 0;
@@ -508,7 +508,7 @@ DIV.zm_toc {
 TABLE.zm_headbar {
   width: 100%;
   font-weight: bold;
-  background-color: #fbf8d0;
+  background-color: #fbeed0;
   border: 1px solid #bab119;
   border-collapse: collapse;
 }
