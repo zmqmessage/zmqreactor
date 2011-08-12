@@ -1,5 +1,5 @@
 /**
- * @file ZmqReactorTest.cpp
+ * @file ReactorsTest.cpp
  * @author askryabin
  *
  * \test
@@ -43,13 +43,6 @@
 #ifdef NDEBUG
 # undef NDEBUG
 #endif
-
-/**
- * \test
- * To measure this overhead we may parameterize \ref tests/ReactorsTest.cpp "main test"
- * with number of iterations and to see the consumed time.
- * for each type of reactor
- */
 
 static const char* req_end = "end";
 static const useconds_t usleep_interval = 0;

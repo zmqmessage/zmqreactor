@@ -134,230 +134,178 @@ and in real apps performance costs probably will be even more unnoticeable.
 <h2>Tutorial</h2>
 <div class="zm_toc">
 <ul>
-  <li>\ref ref_configuring "Configuring library to integarte smoothly into your application"</li>
-  <li>\ref ref_linking_options "Linking options"</li>
-  <li>\ref ref_receiving "Receiving messages"</li>
-  <li>\ref ref_sending "Sending messages"</li>
+  <li>\ref ref_def_handlers "Defining handlers"</li>
+  <li>\ref ref_make_static "Creating static reactor"</li>
+  <li>\ref ref_make_dynamic "Creating dynamic reactor"</li>
+  <li>\ref ref_timeout "Poll with timeout"</li>
 </ul>
 </div>
 
 <hr>
 
-\anchor ref_configuring
-<h3>Configuring library</h3>
-To integrate the library into your application you can (and encouraged to)
-define a few macro constants before including library headers
-(ZmqMessage.hpp and ZmqTools.hpp) anywhere in your application.
-ZmqMessageFwd.hpp may be included wherever (i.e. before the definitions).
-Though none of these definitions are mandatory.
-
-These constants are:
-
-<ul>
-
-<li>
-\code
-ZMQMESSAGE_STRING_CLASS
-\endcode
-@copydoc ZMQMESSAGE_STRING_CLASS
-</li>
-
-<li>
-\code
-ZMQMESSAGE_LOG_STREAM
-\endcode
-@copydoc ZMQMESSAGE_LOG_STREAM
-</li>
-
-<li>
-\code
-ZMQMESSAGE_LOG_TERM
-\endcode
-@copydoc ZMQMESSAGE_LOG_TERM
-</li>
-
-<li>
-\code
-ZMQMESSAGE_EXCEPTION_MACRO
-\endcode
-@copydoc ZMQMESSAGE_EXCEPTION_MACRO
-</li>
-
-<li>
-\code
-ZMQMESSAGE_WRAP_ZMQ_ERROR
-\endcode
-@copydoc ZMQMESSAGE_WRAP_ZMQ_ERROR
-</li>
-
-</ul>
-
-\anchor ref_linking_options
-<h3>Linking options</h3>
-
-<ol>
-<li>
-You may build ZmqMessage as shared library (see \ref zm_build "build instructions")
-and link against it. But if you need extensive configuration, the following problem may arise:
-library is built separately, with definite and basically default configuration
-(\ref ZMQMESSAGE_LOG_STREAM, \ref ZMQMESSAGE_EXCEPTION_MACRO, \ref ZMQMESSAGE_WRAP_ZMQ_ERROR),
-So if you need to override them in your application,
-you really need to \ref zm_build "rebuild shared library" with appropriate definitions
-(the same as you define in your application), otherwise you can get the link error as following:
-\code
-In function `__static_initialization_and_destruction_0':
-/home/andrey_skryabin/projects/zmqmessage/include/zmqmessage/TypeCheck.hpp:32: undefined reference to `ZmqMessage::Private::TypeCheck<ZmqMessage::MessageFormatError, ZmqMessage::NoSuchPartError, zmq::error_t>::value'
-collect2: ld returned 1 exit status
-\endcode
-That's because we check that generated types are the same.
-Link with shared library if you don't need extensive configuration or if it's not too cumbersome
-for you to rebuild shared library with the same configuration.
-</li>
-<li>
-Do not link against shared library. In this case you MUST include implementation
-code in ONE of your .cpp files in order to assemble you binary:
+\anchor ref_def_handlers
+<h3>Defining handlers</h3>
+Your handlers may be anything that is callable on ZmqReactor::Arg and returns bool.
+Returning true means, that polling will be continued.
+Returning false means, that polling will be stopped and ZmqReactor::CANCELLED status is Returned
+(see ZmqReactor::PollResult)
 \code
 
-//@file foo.cpp
-
-//make definitions available for linking
-#include "ZmqMessageImpl.hpp"
-
-...
-
-\endcode
-Do not include "ZmqMessageImpl.hpp" on more than one .cpp file,
-or you will get multiple definitions and thus link error.
-
-Such approach is better than header-only, cause it reduces compilation time.
-
-</li></ol>
-
-\anchor ref_receiving
-<h3>Receiving messages</h3>
-To receive multipart message, you create instance of ZmqMessage::Incoming.
-For XREQ and XREP socket types use \ref ZmqMessage::XRouting as template parameter,
-for other socket types use \ref ZmqMessage::SimpleRouting.
-
-\code
-#include "ZmqMessage.hpp"
-
-zmq::context_t ctx(1);
-zmq::socket sock(ctx, ZMQ_PULL); //will use SimpleRouting
-sock.connect("inproc://some-endpoint");
-
-ZmqMessage::Incoming<ZmqMessage::SimpleRouting> incoming(sock);
-
-//say, we know what message parts we receive. Here are their names:
-const char* req_parts[] = {"id", "name", "blob"};
-
-//true because it's a terminal message, no more parts allowed at end
-incoming.receive(3, req_parts, true);
-
-//Get 2nd part explicitly (assume ZMQMESSAGE_STRING_CLASS is std::string):
-std::string name = ZmqMessage::get_string(incoming[1]);
-//or more verbose:
-std::string name_cpy = ZmqMessage::get<std::string>(incoming[1]);
-
-//if we also have some MyString class:
-MyString my_id = ZmqMessage::get<MyString>(incoming[0]);
-
-//or we can extract data as variables or plain zmq messages.
-zmq::message_t blob;
-incoming >> my_id >> name >> blob;
-
-//or we can iterate on message parts and use standard algorithms:
-std::ostream_iterator<MyString> out_it(std::cout, ", ");
-std::copy(
-  incoming.begin<MyString>(), incoming.end<MyString>(), out_it);
-
-\endcode
-
-Of course, passing message part names is not necessary (see \ref ZmqMessage::Incoming::receive "receive" functions).
-
-There are cases when implemented protocol implies a fixed number of message parts at the beginning of multipart message.
-And the number of subsequent messages is either undefined or estimated based on contents of first parts
-(i.e. first part may contain command name, and other parts may contain data dependent on command).
-So you first may call \ref ZmqMessage::Incoming::receive "receive" function with @c false as last parameter
-(not checking if message is terminal), do something with first parts,
-and then call \ref ZmqMessage::Incoming::receive "receive" or
-\ref ZmqMessage::Incoming::receive_all "receive_all" again to fetch the rest.
-
-\code
-const char* req_parts[] = {"command"};
-incoming.receive(1, req_parts, false);
-
-std::string cmd = ZmqMessage::get_string(incoming[0]);
-
-if (cmd == "SET_PARAM")
+bool handler(ZmqReactor::Arg arg)
 {
-  const char* tail_parts[] = {"parameter 1 value (text)", "parameter 2 value (binary)"};
-  incoming.receive(2, tail_parts, true);
-
-  //message with parameter 1 contains text data converted into unsigned 32 bit integer (ex. "678" -> 678)
-  uint32_t param1 = ZmqMessage::get<uint32_t>(incoming[1]);
-
-  //message with parameter 2 contains binary data (unsigned 32 bit integer)
-  uint32_t param2 = ZmqMessage::get_bin<uint32_t>(incoming[2]);
-
-  //...
+  if (we_want_to_stop())
+    return false;
+  return true;
 }
-else
-{
-  //otherwise we receive all remaining message parts
-  incoming.receive_all();
 
-  if (incoming.size() > 1)
+class Handler
+{
+  bool operator() (ZmqReactor::Arg arg)
   {
-    std::string first;
-    incoming >> ZmqMessage::Skip //command is already analyzed
-      >> first; // same as first = ZmqMessage::get<std::string>(incoming[1]);
-    //...
+    ...
   }
 }
 
 \endcode
+Of course you may use any function adapter
+(i.e. created with std::tr1::bind, boost::bind, etc.).
 
-\anchor ref_sending
-<h3>Sending messages</h3>
+\anchor ref_make_static
+<h3>Creating static reactor</h3>
 
-To send a multipart message, you create instance of ZmqMessage::Outgoing.
-For sending to XREQ and XREP socket types use \ref ZmqMessage::XRouting as template parameter,
-for other socket types use \ref ZmqMessage::SimpleRouting.
+Static reactor is created using ZmqReactor::make_static functions.
+They return auto pointer to static reactor base class (ZmqReactor::StaticReactorBase).
 
 \code
-#include "ZmqMessage.hpp"
 
-zmq::context_t ctx(1);
-zmq::socket sock(ctx, ZMQ_XREQ); //will use XRouting
-sock.connect("inproc://some-endpoint");
+#include <zmqreactor/Static.hpp>
 
-//create Outgoing specifying sending options: use nonblocking send
-//and drop messages if operation would block
-ZmqMessage::Outgoing<ZmqMessage::XRouting> outgoing(
-  sock, ZmqMessage::OutOptions::NONBLOCK | ZmqMessage::OutOptions::DROP_ON_BLOCK);
+//called when writing is possible
+bool send_data(ZmqMessage::Arg arg)
+{
+  zmq::socket_t* s = arg.socket;
+  //...
+}
 
-//suppose we have some MyString class:
-MyString id("112233");
+bool my_handler(ZmqMessage::Arg arg, bool reverse)
+{
+  zmq::socket_t* s = arg.socket;
+  //...
+}
 
-outgoing << id << "SET_VARIABLES";
+zmq::socket_t sock1, sock2;
 
-//Number will be converted to string (written to stream), cause Outgoing is in Text mode.
-outgoing << 567099;
+ZmqReactor::StaticPtr r = ZmqReactor::make_static(
+  sock1, &send_data, ZMQ_POLLOUT,
+  sock2, std::tr1::bind(&my_handler, std::tr1::placeholders::_1, true)), ZMQ_POLLIN
+);
 
-char buffer[128];
-::memset (buffer, 'z', 128); //fill buffer
-
-outgoing << ZmqMessage::RawMessage(buffer, 128);
-
-//send message with binary number and flush it;
-int num = 9988;
-outgoing << ZmqMessage::Binary << num << ZmqMessage::Flush;
 \endcode
 
-Flushing Outgoing message sends final (terminal) message part (which was inserted before flushing),
-and no more insertions allowed after it.
-If you do not flush Outgoing message manually, it will flush in destructor.
+You can give up to 5 pairs of socket and handler.
+If this limit is not enough you may create new make_static functions as
+defined in \ref Static.hpp
+
+\anchor ref_make_dynamic
+<h3>Creating dynamic reactor</h3>
+
+Dynamic reactor is created directly.
+Dynamic reactor allows adding handlers for native file descriptors.
+
+\code
+
+#include <zmqreactor/Dynamic.hpp>
+
+bool my_handler(ZmqMessage::Arg arg, bool reverse)
+{
+  zmq::socket_t* s = arg.socket;
+  //...
+}
+
+bool write_file(ZmqMessage::Arg arg)
+{
+  int fd = arg.fd;
+  //... write to file ...
+}
+
+zmq::socket sock1;
+
+int fd = ::open("file.txt", O_WRONLY | O_CREAT | O_TRUNC);
+
+ZmqReactor::Dynamic r;
+
+r.add_handler(sock1, std::tr1::bind(&my_handler, std::tr1::placeholders::_1, true));
+
+r.add_handler(fd, &write_file, ZMQ_POLLOUT);
+
+//polling...
+
+//we may remove handlers where they are not needed anymore
+
+r.remove_handlers_from(1); //&write_file is removed
+
+//poll again...
+
+\endcode
+
+\anchor ref_timeout
+<h3>Polling with timeout</h3>
+
+For each reactor there are two ways to poll
+<ul>
+<li> <i>PollResult operator() (long timeout = -1)</i><br>
+Perform exactly one poll operation, call all matched handlers, return.
+</li>
+<li> <i>PollResult run(long timeout = -1)</i><br>
+Perform polls until either some handler cancels processing
+(by returning false), timeout expires or some zmq poll error occurs.
+</li>
+</ul>
+
+\code
+
+void print_res(ZmqReactor::PollResult res, const char* last_error)
+{
+  switch (res)
+  {
+  case ZmqReactor::CANCELLED:
+    printf("cancelled by some handler");
+    break;
+  case ZmqReactor::NONE_MATCHED:
+    printf("timeout expired");
+    break;
+  case ZmqReactor::OK:
+    printf("Polled, handlers called. (for one operation)");
+    break;
+  case ZmqReactor::ERROR:
+    printf("Poll error occurred: %s", last_error);
+    break;
+  }
+}
+
+ZmqReactor::Dynamic dr;
+r.add_handler(...);
+
+ZmqReactor::StaticPtr sr = ZmqReactor::make_static(...);
+
+ZmqReactor::PollResult res;
+
+//one poll operation
+res = dr(1000000); //1 second
+print_res(res, dr.last_error());
+
+res = (*sr)(1000000); //1 second
+print_res(res, sr->last_error());
+
+//many operations, until timeout expires or handler cancels further processing
+res = dr.run(1000000); //1 second
+print_res(res, dr.last_error());
+
+res = sr->run(1000000); //1 second
+print_res(res, sr->last_error());
+
+\endcode
+
 
 */
 

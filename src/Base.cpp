@@ -50,6 +50,7 @@ namespace ZmqReactor
         }
         catch (const zmq::error_t& e)
         {
+          last_error_ = e.what();
           return -1;
         }
 

@@ -86,7 +86,7 @@ typedef std::vector<zmq::socket_t*> SocketVec;
 
 typedef void* (*thread_fn) (void *);
 
-//////// numbers transformers
+// -------------- numbers transformers ----------------
 
 bool sort(Numbers& numbers, bool reverse = false)
 {
@@ -108,7 +108,7 @@ bool squares(Numbers& numbers)
   return true;
 }
 
-/**
+/*
  * Op is a template of binary operation applied to numbers
  */
 template<template<class> class Op>
@@ -126,7 +126,7 @@ struct accumulate
   }
 };
 
-//////// printer
+// ----------------- printer ---------------------
 
 void
 print_numbers(const Numbers& numbers, const char* prefix)
@@ -137,7 +137,7 @@ print_numbers(const Numbers& numbers, const char* prefix)
   std::cout << std::endl;
 }
 
-//////// ZMQ helpers
+// --------------- ZMQ helpers ----------------------
 
 bool has_more(zmq::socket_t& sock)
 {
@@ -189,9 +189,9 @@ del_obj(T* obj)
   delete obj;
 }
 
-///////// Generic request Handler
+// ------------- Generic request Handler ---------------
 
-/**
+/*
  * Single handler receives message parts, composes Numbers vector,
  * performs operation and sends result.
  * @tparam Fun operation to perform on numbers. void(Numbers&)
@@ -232,7 +232,7 @@ mkhandler(const Fun& f)
   return Handler<Fun>(f);
 }
 
-///////// Operator threads
+//  ----------- Operator threads ------------
 
 void
 connect_socks(SocketVec& socks)
@@ -298,7 +298,7 @@ dynamic_operator_thread(void* arg)
   return 0;
 }
 
-///////// Main thread
+// --------------- Main thread ----------------------
 
 void
 read_numbers(Numbers& numbers)

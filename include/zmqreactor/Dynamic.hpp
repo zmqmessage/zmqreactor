@@ -112,6 +112,8 @@ namespace ZmqReactor
 
     /**
      * @brief Perform one poll operation.
+     *
+     * @param timeout timeout in microseconds. No timeout by default
      */
     PollResult
     operator()(long timeout = -1);
@@ -121,6 +123,7 @@ namespace ZmqReactor
      *
      * Perform polls until either some handler cancels processing
      * (by returning false), timeout expires or some zmq poll error occurs.
+     * @param timeout timeout in microseconds. No timeout by default
      */
     PollResult
     run(long timeout = -1);

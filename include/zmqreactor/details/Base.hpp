@@ -1,13 +1,14 @@
 /**
  * @file Base.hpp
  * @author askryabin
- *
+ * Definition of base class for Static and Dynamic reactor: ReactorBase
  */
 
 #ifndef ZMQREACTOR_BASE_HPP_
 #define ZMQREACTOR_BASE_HPP_
 
 #include <vector>
+
 #include <zmq.hpp>
 
 #include <zmqreactor/common.hpp>
@@ -16,13 +17,13 @@
 /**
  * @namespace ZmqReactor
  * @brief Main namespace: both \ref StaticReactorBase "Static"
- * and Dynamic reactors reside here.
+ * and \ref Dynamic reactors reside here.
  */
 namespace ZmqReactor
 {
   /**
-   * @namespace Private
-   * @brief Implementation details are located here, nothing to look at
+   * @namespace ZmqReactor::Private
+   * @brief Implementation details are located here.
    */
   namespace Private
   {
@@ -32,6 +33,22 @@ namespace ZmqReactor
      */
     class ReactorBase : private NonCopyable
     {
+    private:
+      const char* last_error_;
+
+    public:
+
+      /**
+       * If poll operation finished with PollResult::ERROR status,
+       * last error is saved and may be obtained.
+       */
+      inline
+      const char*
+      last_error() const
+      {
+        return last_error_;
+      }
+
     protected:
       ReactorBase() {}
 
