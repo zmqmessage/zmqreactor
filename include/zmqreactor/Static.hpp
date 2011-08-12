@@ -225,6 +225,99 @@ namespace ZmqReactor
     );
   }
 
+  /**
+   * @overload
+   */
+  template <typename Fun1, typename Fun2, typename Fun3, typename Fun4>
+  inline
+  StaticPtr
+  make_static(
+      zmq::socket_t& s1, Fun1 fun1, short events1,
+      zmq::socket_t& s2, Fun2 fun2, short events2,
+      zmq::socket_t& s3, Fun3 fun3, short events3,
+      zmq::socket_t& s4, Fun4 fun4, short events4)
+  {
+    typedef typename std::tr1::tuple<Fun1, Fun2, Fun3, Fun4> tuple_t;
+    StaticPtr p(
+        new Private::StaticReactor<tuple_t, 4>(tuple_t(fun1, fun2, fun3, fun4))
+    );
+    Private::add_socket(p.get(), s1, events1);
+    Private::add_socket(p.get(), s2, events2);
+    Private::add_socket(p.get(), s3, events3);
+    Private::add_socket(p.get(), s4, events4);
+    return p;
+  }
+
+  /**
+   * @overload
+   */
+  template <typename Fun1, typename Fun2, typename Fun3, typename Fun4>
+  inline
+  StaticPtr
+  make_static(
+      zmq::socket_t& s1, Fun1 fun1,
+      zmq::socket_t& s2, Fun2 fun2,
+      zmq::socket_t& s3, Fun3 fun3,
+      zmq::socket_t& s4, Fun4 fun4)
+  {
+    return make_static(
+        s1, fun1, (short)ZMQ_POLLIN,
+        s2, fun2, (short)ZMQ_POLLIN,
+        s3, fun3, (short)ZMQ_POLLIN,
+        s4, fun4, (short)ZMQ_POLLIN
+    );
+  }
+
+  /**
+   * @overload
+   */
+  template <
+    typename Fun1, typename Fun2, typename Fun3, typename Fun4, typename Fun5>
+  inline
+  StaticPtr
+  make_static(
+      zmq::socket_t& s1, Fun1 fun1, short events1,
+      zmq::socket_t& s2, Fun2 fun2, short events2,
+      zmq::socket_t& s3, Fun3 fun3, short events3,
+      zmq::socket_t& s4, Fun4 fun4, short events4,
+      zmq::socket_t& s5, Fun5 fun5, short events5)
+  {
+    typedef typename std::tr1::tuple<Fun1, Fun2, Fun3, Fun4, Fun5> tuple_t;
+    StaticPtr p(
+        new Private::StaticReactor<tuple_t, 5>(
+          tuple_t(fun1, fun2, fun3, fun4, fun5))
+    );
+    Private::add_socket(p.get(), s1, events1);
+    Private::add_socket(p.get(), s2, events2);
+    Private::add_socket(p.get(), s3, events3);
+    Private::add_socket(p.get(), s4, events4);
+    Private::add_socket(p.get(), s5, events5);
+    return p;
+  }
+
+  /**
+   * @overload
+   */
+  template <
+    typename Fun1, typename Fun2, typename Fun3, typename Fun4, typename Fun5>
+  inline
+  StaticPtr
+  make_static(
+      zmq::socket_t& s1, Fun1 fun1,
+      zmq::socket_t& s2, Fun2 fun2,
+      zmq::socket_t& s3, Fun3 fun3,
+      zmq::socket_t& s4, Fun4 fun4,
+      zmq::socket_t& s5, Fun5 fun5)
+  {
+    return make_static(
+        s1, fun1, (short)ZMQ_POLLIN,
+        s2, fun2, (short)ZMQ_POLLIN,
+        s3, fun3, (short)ZMQ_POLLIN,
+        s4, fun4, (short)ZMQ_POLLIN,
+        s5, fun5, (short)ZMQ_POLLIN
+    );
+  }
+
   //TODO copy make_static functions for more arguments if needed
 }
 

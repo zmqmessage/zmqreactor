@@ -2,6 +2,26 @@
  * @file ZmqReactorTest.cpp
  * @author askryabin
  *
+ * \test
+ * \brief
+ * Performs poll for different types of reactors 9static, dynamic)
+ * and for raw zmq poll api.
+ *
+ * Reactors dispatch requests to following handlers types:
+ * \li bound member function.
+ * \li bound member function with additional (big) parameter,
+ * which probably wouldn/t fit into internal buffer of tr1::function object,
+ * so dynamic memory allocation should occur for Dynamic reactor.
+ * \li raw function pointer
+ *
+ * To measure this overhead we may parameterize test
+ * with number of iterations and to see the consumed time.
+ * Ex:
+ * \code
+ * $ ./ReactorsTest 100000
+ * \endcode
+ * Number of iterations means the number of "event sets" dispatched,
+ * each reactor is created just once.
  */
 
 #include "stdlib.h"
@@ -24,6 +44,12 @@
 # undef NDEBUG
 #endif
 
+/**
+ * \test
+ * To measure this overhead we may parameterize \ref tests/ReactorsTest.cpp "main test"
+ * with number of iterations and to see the consumed time.
+ * for each type of reactor
+ */
 
 static const char* req_end = "end";
 static const useconds_t usleep_interval = 0;
@@ -212,8 +238,10 @@ int run_raw(SomeStatefulCls& cls, zmq::socket_t* socks[], int num)
 
 enum ServerRunMode
 {
-  DYNAMIC, STATIC, RAW
+  DYNAMIC = 0, STATIC, RAW
 };
+
+static const char* MODES[] = {"DYNAMIC", "STATIC", "RAW"};
 
 struct ServerRunResult
 {
@@ -289,7 +317,7 @@ void* server_fun(void* param)
     finish = clock();
     double elapsed = static_cast<double>(finish - start)/CLOCKS_PER_SEC;
     std::cout <<
-        "Total with mode " << result.mode << ": "
+        "Total with mode " << MODES[result.mode] << ": "
         << "handled 1: " << cls.num_handled_1 << ", "
         << "handled 2: " << cls.num_handled_2 << ", "
         << "handled free: " << handled_free
@@ -352,7 +380,7 @@ int main (int argc, const char* argv[])
     std::cout << "Attempts: " << attempts << std::endl;
   }
 
-  test(RAW); //spare launch
+//  test(RAW); //spare launch
 //  test(ctx, VIRTUAL);
   test(DYNAMIC);
   test(STATIC);

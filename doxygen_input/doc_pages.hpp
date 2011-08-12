@@ -1,113 +1,52 @@
 /** \mainpage ZmqReactor C++ Library
-Provides implementation of Reactor pattern for ZMQ library.
+Provides implementation of
+<a class="el" href="http://en.wikipedia.org/wiki/Reactor_pattern">Reactor pattern</a> for ZMQ library.
 
 <h3>Main features:</h3>
-Supports two different kinds of reactors: static and dynamic.
 <ul>
-<li>Static reactor is fast, as it's handlers are bound to sockets positions
-at compile-time, and no runtime overhead for dispatching occurs.
-But all the functions must be defined at compile time.</li>
-<li>Dynamic reactor is more flexible,
-it allows add/remove handlers of any type at runtime,
-but it imposes runtime overhead of creation a <b>tr1::function</b> wrapper and adding it to vector.
+<li>
+  Supports two different kinds of reactors:
+  \ref ZmqReactor::StaticReactorBase "static" and \ref ZmqReactor::Dynamic "dynamic".
+  <ul>
+  <li>Static reactor is a little bit faster, as it's handlers are bound to sockets positions
+  at creation time, and no runtime overhead for dispatching occurs.
+  But all the functions must be defined when creating the reactor.</li>
+  <li>Dynamic reactor is more flexible,
+  it allows adding and removing handlers of any type in runtime,
+  but it imposes runtime overhead of creation a <b>tr1::function</b> wrapper and adding it to vector.
+  tr1::function may impose some little overhead both in memory usage and calling speed
+  </li>
+  </ul>
 </li>
+<li>
+  Support handler of any type (function pointers, functor objects)
+</li>
+<li>
+  Polling with timeout
+  (<a class="el" href="http://www.zeromq.org/topics:zmq-poll-workaround">ZMQ workaround</a> implemented)
+</li>
+</ul>
 
 REMOVE ME:
 
 <div class="zm_toc">
 <h3>Table of contents</h3>
 <ul>
-  <li>\ref zm_multipart "What multipart messages are and why we need them"</li>
   <li>\ref zm_tutorial "Tutorial"</li>
   <li>Reference</li>
     <dd>
-    - Class ZmqMessage::Incoming for receiving incoming messages
-    - Class ZmqMessage::Outgoing for sending outgoing messages
-    - \ref ZmqMessage "All ZmqMessage namespace members",
-    including functions for convenient working with message parts \n
-    </dd>
-  </li>
-  <li>Advanced aspects</li>
-    <dd>
-    - \ref zm_modes "Text and binary modes"
-    - \ref zm_queueing "Queueing messages for delayed sending"
+    - \ref ZmqReactor::StaticReactorBase "Static" reactor
+    - \ref ZmqReactor::Dynamic "Dynamic" reactor
+    - \ref ZmqReactor "All ZmqReactor namespace members"
     </dd>
   </li>
   <li><a class="el" href="examples.html">Examples</a></li>
   <li><a class="el" href="test.html">Tests list</a></li>
   <li>\ref zm_build "Build instructions"</li>
   <li>\ref zm_performance "Performance notes"</li>
-  <li><a class="el" href="https://github.com/zmqmessage/zmqmessage/">GitHub project download page</a></li>
+  <li><a class="el" href="https://github.com/zmqreactor/zmqreactor/">GitHub project download page</a></li>
 </ul>
 </div>
- */
-
-/** \page zm_multipart
-<h2>What multipart messages are and why we need them</h2>
-
-ZMQ documentation says on multipart messages the following:
-
-\htmlonly
-<div class="zm_boxed">
-<p>A &Oslash;MQ message is composed of 1 or more message parts; each message part is an independent <em>zmq_msg_t</em> in its own right. &Oslash;MQ ensures atomic delivery of messages; peers shall receive either all <em>message parts</em> of a message or none at all.</p>
-<p>The total number of message parts is unlimited.</p>
-<p>An application wishing to send a multi-part message does so by specifying the <em>ZMQ_SNDMORE</em> flag to <em>zmq_send()</em>. The presence of this flag indicates to &Oslash;MQ that the message being sent is a multi-part message and that more message parts are to follow. When the application wishes to send the final message part it does so by calling <em>zmq_send()</em> without the <em>ZMQ_SNDMORE</em> flag; this indicates that no more message parts are to follow.</p>
-</div>
-\endhtmlonly
-
-Thus multipart messages may be used to implement custom text/binary protocols of arbitrary complexity based on ZeroMQ.
-
-The goal of ZmqMessage library is to make working with multipart messages as convenient as possible.
-*/
-
-/** \page zm_queueing
-<h2>Queueing messages for delayed sending</h2>
-
-This feature is useful when:
-<ul>
-<li>sending messages may block
-(ex. <a href="http://api.zeromq.org/2-1-1:zmq-setsockopt">ZMQ_HWM</a> is set and has been reached)
-</li>
-<li>we cannot block on sending message (it would make our thread unresponsive to other events).
-</li>
-<li>we cannot drop the message, cause it MUST be delivered when possible.
-</li>
-</ul>
-
-In this case we should create outgoing messages with ZmqMessage::OutOptions::NONBLOCK and ZmqMessage::OutOptions::CACHE_ON_BLOCK.
-If sending fails, we may 'detach' composed message and resend it later, when output socket will be available for writing.
-
-\code
-//delayed queue
-std::vector<Zmqmessage::Multipart*> queue;
-
-zmq::socket_t s_req(ctx, ZMQ_PUSH);
-
-//set HWM
-uint64_t lim = 10;
-s_req.setsockopt(ZMQ_HWM, &lim, sizeof(uint64_t));
-
-s_req.connect("inproc://test-ep");
-
-ZmqMessage::OutOptions opts(s_req,
-  ZmqMessage::OutOptions::CACHE_ON_BLOCK | ZmqMessage::OutOptions::NONBLOCK);
-
-ZmqMessage::Outgoing<ZmqMessage::SimpleRouting> egress(opts);
-
-egress << "finished" << 888 << ZmqMessage::Flush;
-
-if (egress.is_queued())
-{
-  queue.push_back(egress.detach());
-}
-\endcode
-
-See example \ref zasync.cpp "zasync" for details.
-
-Note, that currently queueing functionality has proven working only for PUSH-PULL sockets.
-Request-reply patterns (REQ, RES, XREQ, XRES sockets) in many cases
-prevent congestion due to internal socket states.
-
  */
 
 /** \page zm_build
@@ -119,7 +58,7 @@ build the shared library, examples and tests.
 <h3>Build Requirements</h3>
 <ul>
 <li>Library is built with <a href="http://cmake.org/">CMake</a> cross-platform build tool, so you need it installed.
-<li>You need <a href="http://zeromq.org">ZeroMQ</a> library in order to compile ZmqMessage library.
+<li>You need <a href="http://zeromq.org">ZeroMQ</a> library in order to compile ZmqReactor library.
 </li>
 </ul>
 
@@ -130,7 +69,7 @@ build the shared library, examples and tests.
 </ul>
 
 <h3>Build Steps</h3>
-Go to zmqmessage directory and do following:
+Go to zmqreactor directory and do following:
 \code
 $ mkdir build
 $ cd build
@@ -147,137 +86,48 @@ $ make install
 
 That's all.
 
-If you wish to build shared library with custom exceptions
-(\ref ZMQMESSAGE_EXCEPTION_MACRO) or with \ref ZMQMESSAGE_WRAP_ZMQ_ERROR defined,
-you may create .hpp file with definitions of these exceptions.
-\code
-//@file mydefs.hpp
-
-#define ZMQMESSAGE_WRAP_ZMQ_ERROR
-
-#define ZMQMESSAGE_EXCEPTION_MACRO(name) \
-  class name \
-  { \
-  .... \
-  }
-
-\endcode
-
-On "cmake" step you can force include the file:
-\code
-$ cmake -DZMQMESSAGE_CONFIGURATION_HEADER=/path/to/mydefs.hpp ..
-\endcode
-
-Note, that building shared library is not really necessary,
-as ZmqMessage library may be compiled in your binary.
-See \ref ref_linking_options "linking options" section in tutorial for details.
  */
 
 /** \page zm_performance
 <h2>Performance notes</h2>
 <hr>
-Nothing comes for free, and our library introduces some overhead
-over plain zeromq messaging interface.
+Nothing comes for free, and our library introduces some little overhead
+over plain zeromq poll interface.
 
-To measure this overhead we have written \ref tests/PerfTest.cpp "performance test".
-We make 100000 request-response transactions between 2 threads and print results.
+To measure this overhead we may use \ref tests/ReactorsTest.cpp "ReactorsTest"
+with huge number of iterations and see the consumed time for each type of reactor.
+
+We have made 10 launches with 1000000 iterations each and got the following summary
+
+<table>
+<tr>
+  <th>Launch</th><th>Dynamic</th><th>Static</th><th>Raw poll</th>
+</tr>
+
+<tr><th>1</th><td>38.54</td><td>30.52</td><td>26.38</td></tr>
+<tr><th>2</th><td>38.64</td><td>38.64</td><td>27.59</td></tr>
+<tr><th>3</th><td>31.33</td><td>37.24</td><td>32.45</td></tr>
+<tr><th>4</th><td>35.74</td><td>29.54</td><td>29.03</td></tr>
+<tr><th>5</th><td>34.78</td><td>36.19</td><td>35.81</td></tr>
+<tr><th>6</th><td>32.09</td><td>33.63</td><td>33.38</td></tr>
+<tr><th>7</th><td>38.55</td><td>39.93</td><td>39.88</td></tr>
+<tr><th>8</th><td>35.65</td><td>41.00</td><td>40.98</td></tr>
+<tr><th>9</th><td>40.45</td><td>37.75</td><td>33.65</td></tr>
+<tr><th>10</th><td>39.11</td><td>38.14</td><td>31.84</td></tr>
+
+<tr style='color: blue;'><th>average</th>
+              <td>36.49</td><td>36.26</td><td>33.10</td></tr>
+<tr style='color: red;'><th>min</th>
+              <td>31.33</td><td>30.52</td><td>26.38</td></tr>
+
+</table>
 
 First of all, we need to say that this "application" does nothing
-but sending and receiving multipart messages, so it should be considered highly synthetic,
-and in real apps performance costs probably will be unnoticeable.
-
-We make 10 contiguous test runs and we get <b>20%</b> of average overhead.
+but sending and receiving small messages and dispatching poll events, so it should be considered rather synthetic,
+and in real apps performance costs probably will be even more unnoticeable.
 
  */
 
-/** \page zm_modes
-<h2>Word on Text and Binary modes</h2>
-<hr>
-Text and Binary modes determine how raw ZMQ message content is converted into user type,
-when message content is extracted from Incoming, inserted into Outgoing,
-or we iterate over incoming multipart message.
-
-<b>Binary:</b> message content pointer is interpreted as pointer to user type,
-and assign operator is invoked. This mode is suitable for implementing binary protocols.
-
-<b>Text:</b> message content is interpreted as char array.
-For string types (see \ref ZMQMESSAGE_STRING_CLASS on string concept definition)
-we initialize object from char array, for other types we put (>>) chars into @c stringstream
-and read stream into instance of type.
-
-<h3>How to set:</h3>
-<ul>
-<li>For Incoming:
-Use Text and Binary manipulators to switch stream to/from binary mode. Default mode is text.
-\code
-//read text command and binary integer as value.
-std::string command;
-int value;
-incoming >> ZmqMessage::Text >> command << ZmqMessage::Binary << value;
-\endcode
-</li>
-<li>For iteration over incoming:
-Call Incoming::begin() method:
-\code
-std::ostream_iterator<int> out_it(std::cout, ", ");
-
-//print messages with binary integers.
-std::copy(
-  incoming.begin<int>(true), incoming.end<int>(), out_it);
-\endcode
-</li>
-<li>For insertion into outgoing:
-You may initialize Outgoing with OutOptions::BINARY_MODE to initially set binary mode,
-otherwise text mode is set.
-\code
-ZmqMessage::Outgoing<ZmqMessage::XRouting> outgoing(
-  sock, ZmqMessage::OutOptions::NONBLOCK | ZmqMessage::OutOptions::BINARY_MODE);
-
-//then use Text and Binary manipulators:
-long id = 1;
-
-outgoing << id //insert binary
-  << ZmqMessage::Text //switch to text
-  << "SET_VALUE"
-  << ZmqMessage::Binary << 999; //again binary
-
-\endcode
-</li>
-<li>For all:
-When you need a particular type to be ALWAYS sent/received/iterated in either binary or text form
-(independent on current stream state), you may use any of two ways for it.
-
-1. Declare your 'binary' types with @c raw_mark field.
-\code
-struct SomeBinaryData
-{
-  typedef void raw_mark;
-
-  int f1;
-  char f2[20];
-};
-\endcode
-
-2. Declare particular types as 'binary' using \ref ZMQMESSAGE_BINARY_TYPE
-or as text using \ref ZMQMESSAGE_TEXT_TYPE macros.
-\code
-
-struct OtherBinaryData
-{
-  int aa;
-  char[100] data;
-};
-ZMQMESSAGE_BINARY_TYPE(OtherBinaryData);
-
-//always send/receive 'long' as text.
-ZMQMESSAGE_TEXT_TYPE(long);
-\endcode
-Actually, these macros create a specialization
-of traits type ZmqMessage::Private::IsRaw for the type specified.
-
-See example zserialize.cpp for details.
-</ul>
- */
 
 /** \page zm_tutorial
 

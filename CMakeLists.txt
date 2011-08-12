@@ -40,5 +40,5 @@ find_package(ZeroMQ)
 add_subdirectory(src)
 add_subdirectory(include)
 add_subdirectory(tests)
-#add_subdirectory(examples)
+add_subdirectory(examples)
 
