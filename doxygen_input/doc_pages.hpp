@@ -166,7 +166,7 @@ bool handler(ZmqReactor::Arg arg)
   return true;
 }
 
-class Handler
+struct Handler
 {
   bool operator() (ZmqReactor::Arg arg)
   {
@@ -192,22 +192,31 @@ They return auto pointer to static reactor base class (ZmqReactor::StaticReactor
 bool send_data(ZmqMessage::Arg arg)
 {
   zmq::socket_t* s = arg.socket;
-  //...
+  zmq::message_t msg;
+  s->send(msg);
+  return true;
 }
 
-bool my_handler(ZmqMessage::Arg arg, bool reverse)
+bool my_handler(ZmqMessage::Arg arg, bool param)
 {
   zmq::socket_t* s = arg.socket;
+  zmq::message_t msg;
+  s->recv(msg);
   //...
+  return true;
 }
 
-zmq::socket_t sock1, sock2;
+int main()
+{
+  zmq::socket_t sock1, sock2;
 
-ZmqReactor::StaticPtr r = ZmqReactor::make_static(
-  sock1, &send_data, ZMQ_POLLOUT,
-  sock2, std::tr1::bind(&my_handler, std::tr1::placeholders::_1, true)), ZMQ_POLLIN
-);
-
+  ZmqReactor::StaticPtr r = ZmqReactor::make_static(
+    sock1, &send_data, ZMQ_POLLOUT,
+    sock2, std::tr1::bind(&my_handler, std::tr1::placeholders::_1, true)), ZMQ_POLLIN
+  );
+  r->run();
+  return 0;
+}
 \endcode
 
 You can give up to 5 pairs of socket and handler.
@@ -224,36 +233,43 @@ Dynamic reactor allows adding handlers for native file descriptors.
 
 #include <zmqreactor/Dynamic.hpp>
 
-bool my_handler(ZmqMessage::Arg arg, bool reverse)
+bool my_handler(ZmqMessage::Arg arg, bool param)
 {
   zmq::socket_t* s = arg.socket;
+  zmq::message_t msg;
+  s->recv(msg);
   //...
+  return true;
 }
 
 bool write_file(ZmqMessage::Arg arg)
 {
   int fd = arg.fd;
   //... write to file ...
+  return true;
 }
 
-zmq::socket sock1;
+int main()
+{
+  zmq::socket sock1;
 
-int fd = ::open("file.txt", O_WRONLY | O_CREAT | O_TRUNC);
+  int fd = ::open("file.txt", O_WRONLY | O_CREAT | O_TRUNC);
 
-ZmqReactor::Dynamic r;
+  ZmqReactor::Dynamic r;
 
-r.add_handler(sock1, std::tr1::bind(&my_handler, std::tr1::placeholders::_1, true));
+  r.add_handler(sock1, std::tr1::bind(&my_handler, std::tr1::placeholders::_1, true));
+  r.add_handler(fd, &write_file, ZMQ_POLLOUT);
 
-r.add_handler(fd, &write_file, ZMQ_POLLOUT);
+  r.run(); //polling until any handler returns false
 
-//polling...
+  //we may remove handlers where they are not needed anymore
 
-//we may remove handlers where they are not needed anymore
+  r.remove_handlers_from(1); //&write_file is removed
 
-r.remove_handlers_from(1); //&write_file is removed
+  r.run(); //polling again...
 
-//poll again...
-
+  return 0;
+}
 \endcode
 
 \anchor ref_timeout
@@ -291,27 +307,31 @@ void print_res(ZmqReactor::PollResult res, const char* last_error)
   }
 }
 
-ZmqReactor::Dynamic dr;
-r.add_handler(...);
+int main()
+{
+  ZmqReactor::Dynamic dr;
+  r.add_handler(...);
 
-ZmqReactor::StaticPtr sr = ZmqReactor::make_static(...);
+  ZmqReactor::StaticPtr sr = ZmqReactor::make_static(...);
 
-ZmqReactor::PollResult res;
+  ZmqReactor::PollResult res;
 
-//one poll operation
-res = dr(1000000); //1 second
-print_res(res, dr.last_error());
+  //one poll operation
+  res = dr(1000000); //1 second
+  print_res(res, dr.last_error());
 
-res = (*sr)(1000000); //1 second
-print_res(res, sr->last_error());
+  res = (*sr)(1000000); //1 second
+  print_res(res, sr->last_error());
 
-//many operations, until timeout expires or handler cancels further processing
-res = dr.run(1000000); //1 second
-print_res(res, dr.last_error());
+  //many operations, until timeout expires or handler cancels further processing
+  res = dr.run(1000000); //1 second
+  print_res(res, dr.last_error());
 
-res = sr->run(1000000); //1 second
-print_res(res, sr->last_error());
+  res = sr->run(1000000); //1 second
+  print_res(res, sr->last_error());
 
+  return 0;
+}
 \endcode
 
 
