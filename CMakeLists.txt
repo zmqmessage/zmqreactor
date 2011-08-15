@@ -42,3 +42,7 @@ add_subdirectory(include)
 add_subdirectory(tests)
 add_subdirectory(examples)
 
+add_custom_target(doc
+  doxygen && echo "To browse docs: open ${CMAKE_CURRENT_SOURCE_DIR}/doc/html/index.html"
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  COMMENT "Generating documentation")

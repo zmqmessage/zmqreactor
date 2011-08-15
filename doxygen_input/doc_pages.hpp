@@ -92,7 +92,12 @@ $ make install
 //or "sudo make install" depending on permissions
 \endcode
 
-That's all.
+If you want to generate offline documentation:
+\code
+$ make doc
+\endcode
+
+Documentation is generated at doc/html/index.html
 
  */
 
