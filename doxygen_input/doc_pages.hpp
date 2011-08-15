@@ -99,6 +99,8 @@ $ make doc
 
 Documentation is generated at doc/html/index.html
 
+Note, that you need <a class="el" href="http://www.doxygen.org/">Doxygen</a>
+to be installed in order to generate documentation.
  */
 
 /** \page zm_performance
