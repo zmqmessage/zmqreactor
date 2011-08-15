@@ -116,7 +116,7 @@ struct accumulate
 {
   typedef bool result_type;
 
-  int operator()(Numbers& numbers, Numbers::value_type init)
+  bool operator()(Numbers& numbers, Numbers::value_type init)
   {
     int res = std::accumulate(
       numbers.begin(), numbers.end(), init, Op<Numbers::value_type>());
@@ -333,7 +333,7 @@ usage()
 }
 
 void
-parse_args(int argc, char* argv[], bool &is_dynamic)
+parse_args(int argc, char* argv[], bool& is_dynamic)
 {
   char c;
   while ((c = getopt (argc, argv, "sd")) != -1)
