@@ -1,7 +1,7 @@
 /**
  * @file Static.hpp
  * @author askryabin
- *
+ * @brief Interface of Static reactor, and static reactors make functions
  */
 
 #ifndef ZMQREACTOR_STATIC_HPP_
@@ -106,6 +106,10 @@ namespace ZmqReactor
       template <typename ReactorT, int TermSize, int Num>
       friend struct Caller;
 
+      /**
+       * @brief Functor Calls the handler at specified offset Num.
+       * Non-terminal specialization.
+       */
       template <typename ReactorT, int TermSize, int Num>
       struct Caller
       {
@@ -113,6 +117,10 @@ namespace ZmqReactor
         call(self& r);
       };
 
+      /**
+       * @brief Functor Calls the handler at specified offset Num.
+       * Terminal specialization, does nothing.
+       */
       template <typename ReactorT, int TermSize>
       struct Caller<ReactorT, TermSize, TermSize>
       {
@@ -131,7 +139,7 @@ namespace ZmqReactor
   }
 
   /**
-   * Auto-pointer to static reactor.
+   * @brief Auto-pointer to static reactor.
    */
   typedef std::auto_ptr<StaticReactorBase> StaticPtr;
 
