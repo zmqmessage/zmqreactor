@@ -8,6 +8,7 @@
 #define ZMQREACTOR_BASE_HPP_
 
 #include <vector>
+#include "sys/time.h"
 
 #include <zmq.hpp>
 
@@ -94,6 +95,48 @@ namespace ZmqReactor
         return (item.revents & item.events);
       }
 
+      class Timer
+      {
+      private:
+        long remaining_;
+        struct timeval last_ev_;
+
+      public:
+
+        explicit
+        Timer(long timeout) :
+          remaining_(timeout)
+        {
+          if (remaining_ > 0)
+          {
+            ::gettimeofday(&last_ev_, 0);
+          }
+        }
+
+        void
+        tick()
+        {
+          if (remaining_ > 0)
+          {
+            struct timeval end;
+            ::gettimeofday(&end, 0);
+            struct timeval elapsed;
+            timersub(&end, &last_ev_, &elapsed);
+            remaining_ -= (elapsed.tv_sec * 1000000 + elapsed.tv_usec);
+            if (remaining_ <= 0)
+            {
+              remaining_ = 0;
+            }
+            last_ev_ = end;
+          }
+        }
+
+        long
+        remaining() const
+        {
+          return remaining_;
+        }
+      };
     };
   }
 }

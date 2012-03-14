@@ -21,11 +21,19 @@ namespace ZmqReactor
     {
       //check all socks
       PollResult res;
+      Timer timer(timeout);
       while (true)
       {
-        res = this->poll(timeout);
+        res = this->poll(timer.remaining());
         if (res != OK && res != NONE_MATCHED)
+        {
           break;
+        }
+        timer.tick();
+        if (timeout >=0 && timer.remaining() <= 0)
+        {
+          break;
+        }
       }
       return res;
     }

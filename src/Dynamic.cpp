@@ -42,15 +42,19 @@ namespace ZmqReactor
   Dynamic::run(long timeout)
   {
     PollResult res;
+    Timer timer(timeout);
     while (true)
     {
-      //calc timeout
-      res = this->operator()(timeout);
+      res = this->operator()(timer.remaining());
       if (res != OK && res != NONE_MATCHED)
       {
         break;
       }
-      //if none_matched - call timeout handlers
+      timer.tick();
+      if (timeout >=0 && timer.remaining() <= 0)
+      {
+        break;
+      }
     }
     return res;
   }
