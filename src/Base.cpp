@@ -31,6 +31,23 @@ namespace ZmqReactor
       return res.tv_sec * 1000000 + res.tv_usec;
     }
 
+    size_t
+    ReactorBase::replace_socket(
+      zmq::socket_t* old_ptr, zmq::socket_t* new_ptr)
+    {
+      size_t rep = 0;
+      for (size_t i = 0; i < sockets_.size(); ++i)
+      {
+        if (sockets_[i] == old_ptr && poll_items_[i].socket == old_ptr)
+        {
+          sockets_[i] = new_ptr;
+          poll_items_[i].socket = new_ptr;
+          ++rep;
+        }
+      }
+      return rep;
+    }
+
     int
     ReactorBase::do_poll(long timeout)
     {

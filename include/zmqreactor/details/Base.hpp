@@ -50,6 +50,16 @@ namespace ZmqReactor
         return last_error_;
       }
 
+      /**
+       * Replace old socket pointer to new value in all configured handlers.
+       * Use it if you reopened a socket
+       * (deleted old instance and created new)
+       * and want all configured handlers to remain valid.
+       * @return number of actual replacements made
+       */
+      size_t
+      replace_socket(zmq::socket_t* old_ptr, zmq::socket_t* new_ptr);
+
     protected:
       ReactorBase() {}
 
