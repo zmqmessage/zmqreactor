@@ -22,7 +22,7 @@ namespace ZmqReactor
    * They may use dynamic allocations for copies of large functors.
    * No virtual calls are performed.
    */
-  class Dynamic : protected Private::ReactorBase
+  class Dynamic : public Private::ReactorBase
   {
   private:
 
