@@ -67,7 +67,8 @@ namespace ZmqReactor
 
       PollItemsVec poll_items_;
 
-      std::vector<zmq::socket_t*> sockets_;
+      typedef std::vector<zmq::socket_t*> SocketsVec;
+      SocketsVec sockets_;
 
       /**
        * Perform zmq poll once.
@@ -95,6 +96,12 @@ namespace ZmqReactor
 
       void
       add_fd(int fd, short events);
+
+      int
+      index_of(zmq::socket_t& socket) const;
+
+      void
+      replace_socket(int idx, zmq::socket_t& socket, short events);
 
       void
       remove_from(int idx);

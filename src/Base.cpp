@@ -36,12 +36,14 @@ namespace ZmqReactor
       zmq::socket_t* old_ptr, zmq::socket_t* new_ptr)
     {
       size_t rep = 0;
+      void* old_content_ptr = static_cast<void*>(*old_ptr);
+
       for (size_t i = 0; i < sockets_.size(); ++i)
       {
-        if (sockets_[i] == old_ptr && poll_items_[i].socket == old_ptr)
+        if (sockets_[i] == old_ptr && poll_items_[i].socket == old_content_ptr)
         {
           sockets_[i] = new_ptr;
-          poll_items_[i].socket = new_ptr;
+          poll_items_[i].socket = static_cast<void*>(*new_ptr);
           ++rep;
         }
       }
@@ -100,6 +102,28 @@ namespace ZmqReactor
 
       poll_items_.push_back(item);
       sockets_.push_back(&socket);
+    }
+
+    void
+    ReactorBase::replace_socket(int idx, zmq::socket_t& socket, short events)
+    {
+      poll_items_[idx].socket = static_cast<void*>(socket);
+      poll_items_[idx].fd = 0;
+      poll_items_[idx].events = events;
+      poll_items_[idx].revents = 0;
+      sockets_[idx] = &socket;
+    }
+
+    int
+    ReactorBase::index_of(zmq::socket_t& socket) const
+    {
+      SocketsVec::const_iterator it =
+        std::find(sockets_.begin(), sockets_.end(), &socket);
+      if (it == sockets_.end())
+      {
+        return -1;
+      }
+      return std::distance(sockets_.begin(), it);
     }
 
     void

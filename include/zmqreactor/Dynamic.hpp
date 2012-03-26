@@ -37,7 +37,6 @@ namespace ZmqReactor
      * @brief Add poll handler for zmq socket.
      *
      * @tparam FunT functor with signature: bool (Arg);
-     * Returns true to continue polling, false to break.
      * @param socket bound socket
      * @param events zmq events mask to handle, for example ZMQ_POLLIN
      * @param fun functor. Must be copyable.
@@ -48,6 +47,28 @@ namespace ZmqReactor
     {
       add_socket(socket, events);
       handlers_.push_back(HandlerFun(fun));
+    }
+
+    /**
+     * @brief Replace poll handler for zmq socket to new handler.
+     * @return true if replaced, false if no handler is set for this socket
+     * @tparam FunT functor with signature: bool (Arg);
+     * @param socket bound socket
+     * @param events zmq events mask to handle, for example ZMQ_POLLIN
+     * @param fun functor. Must be copyable.
+     */
+    template <typename FunT>
+    bool
+    replace_handler(zmq::socket_t& socket, short events, const FunT& fun)
+    {
+      int idx = index_of(socket);
+      if (idx < 0)
+      {
+        return false;
+      }
+      replace_socket(idx, socket, events);
+      handlers_[idx] = HandlerFun(fun);
+      return true;
     }
 
     /**
@@ -76,6 +97,16 @@ namespace ZmqReactor
     inline void
     add_handler(zmq::socket_t& socket, const FunT& fun) {
       add_handler(socket, ZMQ_POLLIN, fun);
+    }
+
+    /**
+     * @overload
+     * Overload for events = ZMQ_POLLIN
+     */
+    template <typename FunT>
+    inline bool
+    replace_handler(zmq::socket_t& socket, const FunT& fun) {
+      return replace_handler(socket, ZMQ_POLLIN, fun);
     }
 
     /**
