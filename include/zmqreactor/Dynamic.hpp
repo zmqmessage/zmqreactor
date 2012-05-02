@@ -155,9 +155,11 @@ namespace ZmqReactor
      * Perform polls until either some handler cancels processing
      * (by returning false), timeout expires or some zmq poll error occurs.
      * @param timeout timeout in microseconds. No timeout by default
+     * @param max_events maximum number of events to handle before return.
+     * No limit (-1) by default.
      */
     PollResult
-    run(long timeout = -1);
+    run(long timeout = -1, int max_events = -1);
   };
 }
 

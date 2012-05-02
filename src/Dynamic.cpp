@@ -39,11 +39,11 @@ namespace ZmqReactor
   }
 
   PollResult
-  Dynamic::run(long timeout)
+  Dynamic::run(long timeout, int max_events)
   {
     PollResult res;
     Timer timer(timeout);
-    while (true)
+    for (int i = 0; i < max_events || max_events == -1; ++i)
     {
       res = this->operator()(timer.remaining());
       if (res != OK && res != NONE_MATCHED)
