@@ -39,14 +39,15 @@
 
 #include "zmqreactor/Dynamic.hpp"
 #include "zmqreactor/Static.hpp"
+#include "zmqreactor/LibEvent.hpp"
 
 #ifdef NDEBUG
 # undef NDEBUG
 #endif
 
 static const char* req_end = "end";
-static const useconds_t usleep_interval = 0;
-static long attempts = 1;
+static const useconds_t usleep_interval = 0;//1000000;
+static long attempts = 10000;
 
 static const char* dev_names[] = {
     "inproc://zmqreactor_test_proc1",
@@ -71,22 +72,23 @@ void* client_fun(void* param)
   try {
     zmq::socket_t socket (context, ZMQ_REQ);
 
-    //std::cout << name << ": Connecting to endpoint " << endopoint << std::endl;
+//    std::cout << "Client " << num << ": Connecting to endpoint " << endopoint << std::endl;
     socket.connect (endopoint);
-    //std::cout << name << ": connected.. will do " << attempts << "attempts" << std::endl;
+//    std::cout << "Client " << num << ": connected.. will do " << attempts << "attempts" << std::endl;
 
     //  Do requests, waiting each time for a response
     for (long request_nbr = 0; request_nbr < attempts; request_nbr++)
     {
       zmq::message_t request (6);
       memcpy ((void *) request.data (), "Hello", 6);
-      //std::cout << "Sending request " << request_nbr << std::endl;
+//      std::cout << "Client " << num << ": Sending request " << request_nbr << std::endl;
       socket.send (request);
 
       //  Get the reply.
       zmq::message_t reply;
       socket.recv (&reply);
-      //std::cout << "Received reply " << request_nbr << ": " << (char*)reply.data() << std::endl;
+//      std::cout << "Client " << num << ": Received reply " << request_nbr <<
+//        ": " << (char*)reply.data() << std::endl;
 
       if (usleep_interval > 0)
         ::usleep(usleep_interval);
@@ -231,10 +233,10 @@ int run_raw(SomeStatefulCls& cls, zmq::socket_t* socks[], int num)
 
 enum ServerRunMode
 {
-  DYNAMIC = 0, STATIC, RAW
+  DYNAMIC = 0, STATIC, LIBEVENT, RAW
 };
 
-static const char* MODES[] = {"DYNAMIC", "STATIC", "RAW"};
+static const char* MODES[] = {"DYNAMIC", "STATIC", "LIBEVENT", "RAW"};
 
 struct ServerRunResult
 {
@@ -299,6 +301,20 @@ void* server_fun(void* param)
       pR->run();
       break;
     }
+    case LIBEVENT:
+    {
+      ZmqReactor::LibEvent r;
+      r.add_handler(s1, ZmqReactor::Poll::IN, std::bind1st(std::mem_fun(&SomeStatefulCls::handle_1), &cls));
+      r.add_handler(s2, std::tr1::bind(
+          std::tr1::mem_fn(&SomeStatefulCls::handle_2), &cls,
+          std::tr1::placeholders::_1, some_param
+      ));
+      //free fun
+      r.add_handler(s3, std::ptr_fun(&free_handler));
+      ZmqReactor::PollResult res = r.run();
+      std::cout << "LIBEVENT server: reactor returned " << ZmqReactor::poll_result_str(res) << "\n";
+      break;
+    }
     case RAW:
     {
       zmq::socket_t* socks[] = {&s1, &s2, &s3};
@@ -331,6 +347,8 @@ void* server_fun(void* param)
 
 void test(ServerRunMode mode)
 {
+  //sometimes immediate reconnecting fails
+  ::sleep(1);
 
   //server will wait to receive until the clients start
 
@@ -373,9 +391,11 @@ int main (int argc, const char* argv[])
     std::cout << "Attempts: " << attempts << std::endl;
   }
 
-//  test(RAW); //spare launch
+  test(RAW); //spare launch
 //  test(ctx, VIRTUAL);
+
   test(DYNAMIC);
-  test(STATIC);
-  test(RAW);
+//  test(STATIC);
+  test(LIBEVENT);
+//  test(RAW);
 }

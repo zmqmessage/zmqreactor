@@ -10,8 +10,6 @@
 #include <vector>
 #include "sys/time.h"
 
-#include <zmq.hpp>
-
 #include <zmqreactor/common.hpp>
 #include <zmqreactor/details/NonCopyable.hpp>
 

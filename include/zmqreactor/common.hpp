@@ -7,8 +7,20 @@
 #ifndef ZMQREACTOR_COMMON_HPP_
 #define ZMQREACTOR_COMMON_HPP_
 
+#include <zmq.hpp>
+
 namespace ZmqReactor
 {
+  namespace Poll
+  {
+    enum Value
+    {
+      IN = 1,
+      OUT = 2,
+      ERR = 4
+    };
+  }
+
   /**
    * @brief Argument passed to event handlers from reactors.
    */
@@ -29,7 +41,7 @@ namespace ZmqReactor
     /**
      * @brief Bitwise mask of triggered events:
      *
-     * Possible constants: ZMQ_POLLIN, ZMQ_POLLOUT or ZMQ_POLLERR
+     * Possible constants: POLL::IN, POLL::OUT or POLL::ERR
      */
     short events;
   };

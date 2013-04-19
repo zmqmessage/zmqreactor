@@ -36,6 +36,7 @@ set(
   )
 
 find_package(ZeroMQ)
+find_package(LibEvent)
 
 add_subdirectory(src)
 add_subdirectory(include)

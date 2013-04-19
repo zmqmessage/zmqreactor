@@ -38,7 +38,7 @@ namespace ZmqReactor
      *
      * @tparam FunT functor with signature: bool (Arg);
      * @param socket bound socket
-     * @param events zmq events mask to handle, for example ZMQ_POLLIN
+     * @param events zmq events mask to handle, for example POLL::IN
      * @param fun functor. Must be copyable.
      */
     template <typename FunT>
@@ -95,7 +95,8 @@ namespace ZmqReactor
      */
     template <typename FunT>
     inline void
-    add_handler(zmq::socket_t& socket, const FunT& fun) {
+    add_handler(zmq::socket_t& socket, const FunT& fun)
+    {
       add_handler(socket, ZMQ_POLLIN, fun);
     }
 
@@ -105,7 +106,8 @@ namespace ZmqReactor
      */
     template <typename FunT>
     inline bool
-    replace_handler(zmq::socket_t& socket, const FunT& fun) {
+    replace_handler(zmq::socket_t& socket, const FunT& fun)
+    {
       return replace_handler(socket, ZMQ_POLLIN, fun);
     }
 
@@ -115,7 +117,8 @@ namespace ZmqReactor
      */
     template <typename FunT>
     inline void
-    add_handler(int fd, const FunT& fun) {
+    add_handler(int fd, const FunT& fun)
+    {
       add_handler(fd, ZMQ_POLLIN, fun);
     }
 
@@ -123,7 +126,8 @@ namespace ZmqReactor
      * @brief Get number of registered handlers
      */
     inline size_t
-    num_handlers() const {
+    num_handlers() const
+    {
       return handlers_.size();
     }
 

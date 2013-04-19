@@ -41,7 +41,7 @@ namespace ZmqReactor
   PollResult
   Dynamic::run(long timeout, int max_events)
   {
-    PollResult res;
+    PollResult res = NONE_MATCHED;
     Timer timer(timeout);
     for (int i = 0; i < max_events || max_events == -1; ++i)
     {
