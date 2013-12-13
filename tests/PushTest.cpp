@@ -24,6 +24,31 @@ bool worker_handler(ZmqReactor::Arg arg)
   return false;
 }
 
+int timeout_counter = 0;
+
+bool timeout_handler(ZmqReactor::Arg arg)
+{
+  bool ret = (timeout_counter++ < 2);
+  std::cout << "timeout_handler: " << ret << "\n";
+  return ret;
+}
+
+void* timeout_fun(void* param)
+{
+  try
+  {
+    ZmqReactor::LibEvent r;
+    r.add_timeout(0, std::ptr_fun(&timeout_handler));
+
+    ZmqReactor::PollResult res = r.run();
+    std::cout << "timeout_fun: polled: " << ZmqReactor::poll_result_str(res) << std::endl;
+  }
+  catch (std::exception &e) {
+    std::cerr << "timeout_fun: An error occurred: " << e.what() << std::endl;
+  }
+  return 0;
+}
+
 void* worker_fun(void* param)
 {
   try
@@ -72,16 +97,20 @@ void* main_fun(void* param)
 
 int main()
 {
-  pthread_t t_main, t_worker;
+  pthread_t t_main, t_worker, t_timeout;
 
   pthread_create(&t_main, NULL, &main_fun, 0);
 
+  //
   sleep(1);
 
   pthread_create(&t_worker, NULL, &worker_fun, 0);
 
   pthread_join(t_worker, NULL);
   pthread_join(t_main, NULL);
+  //
+  pthread_create(&t_timeout, NULL, &timeout_fun, 0);
+  pthread_join(t_timeout, NULL);
 
   return 0;
 

@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <cstring>
 #include <vector>
@@ -88,7 +89,7 @@ typedef void* (*thread_fn) (void *);
 
 // -------------- numbers transformers ----------------
 
-bool sort(Numbers& numbers, bool reverse = false)
+bool sort(Numbers& numbers, bool reverse)
 {
   std::sort(numbers.begin(), numbers.end());
   if (reverse)
@@ -252,7 +253,8 @@ static_operator_thread(void* arg)
   connect_socks(socks);
 
   ZmqReactor::StaticPtr r = ZmqReactor::make_static(
-    *socks[SORT], mkhandler(&sort),
+    *socks[SORT], mkhandler(
+      std::tr1::bind(&sort, std::tr1::placeholders::_1, false)),
     *socks[REVSORT], mkhandler(
       std::tr1::bind(&sort, std::tr1::placeholders::_1, true)),
     *socks[SQUARE], mkhandler(&squares),
@@ -278,7 +280,8 @@ dynamic_operator_thread(void* arg)
   ZmqReactor::Dynamic r;
 
   r.add_handler(
-    *socks[SORT], mkhandler(&sort));
+    *socks[SORT], mkhandler(
+      std::tr1::bind(&sort, std::tr1::placeholders::_1, false)));
   r.add_handler(
     *socks[REVSORT], mkhandler(
       std::tr1::bind(&sort, std::tr1::placeholders::_1, true)));

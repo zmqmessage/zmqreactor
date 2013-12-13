@@ -11,14 +11,14 @@ namespace ZmqReactor
     template <typename Object>
     class LinkedQueue;
 
+    template <typename Object>
     class LinkedBase
     {
     private:
-      LinkedBase* prev_;
-      LinkedBase* next_;
+      Object* prev_;
+      Object* next_;
 
-      template <typename Object>
-      friend class LinkedQueue;
+      friend class LinkedQueue<Object>;
 
     protected:
       LinkedBase() :
@@ -33,17 +33,10 @@ namespace ZmqReactor
     class LinkedQueue
     {
     private:
-      BOOST_STATIC_ASSERT((boost::is_base_of<LinkedBase, Object>::value));
+      BOOST_STATIC_ASSERT(
+        (boost::is_base_of<LinkedBase<Object>, Object>::value));
 
       Object* head_;
-
-      inline
-      static
-      Object*
-      to_obj(LinkedBase* base)
-      {
-        return static_cast<Object*>(static_cast<void*>(base));
-      }
 
     public:
       LinkedQueue() : head_(0)
@@ -71,7 +64,7 @@ namespace ZmqReactor
       Object*
       next(Object* obj) const throw()
       {
-        return to_obj(obj->next_);
+        return obj->next_;
       }
     };
 
@@ -82,7 +75,7 @@ namespace ZmqReactor
     {
       while (head_)
       {
-        Object* next = to_obj(head_->next_);
+        Object* next = head_->next_;
         delete head_;
         head_ = next;
       }
@@ -115,7 +108,7 @@ namespace ZmqReactor
       }
       if (head_ == obj)
       {
-        head_ = to_obj(obj->prev_ ? obj->prev_ : obj->next_);
+        head_ = obj->prev_ ? obj->prev_ : obj->next_;
       }
     }
 

@@ -6,6 +6,8 @@
 
 #include "zmqreactor/LibEvent.hpp"
 
+#include <iostream>
+
 namespace ZmqReactor
 {
   class LibEvent::AllHandlersIter
@@ -125,16 +127,18 @@ namespace ZmqReactor
 
   LibEvent::LibEvent() :
     base_(::event_base_new()),
-    poll_result_(OK),
-    event_immediate_scheduled_(false)
+    now_handled_(0),
+    poll_result_(OK)
   {
+    //EV_PERSIST does not work with 0 timeouts
     ::event_assign(
-       &event_immediate_, base_, 0, EV_PERSIST,
+       &event_immediate_, base_, 0, EV_TIMEOUT,
        &LibEvent::immediate_callback, this);
   }
 
   LibEvent::~LibEvent()
   {
+//std::cout << time(0) << ">" <<"====== ~Reactor ========= \n";
     for (AllHandlersIter it = AllHandlersIter::begin(this),
       e = AllHandlersIter::end(this); it != e; )
     {
@@ -170,7 +174,7 @@ namespace ZmqReactor
   LibEvent::immediate_callback(int fd, short event, void *arg)
   {
     LibEvent* reactor = static_cast<LibEvent*>(arg);
-
+//std::cout << time(0) << ">" <<time(0) << ": >>> Reactor: in immediate_callback, fd=" << fd << "\n";
     for (HandlerInfo* hi = reactor->triggered_handlers_.head(),
       * next_hi = hi; hi; hi = next_hi)
     {
@@ -180,6 +184,7 @@ namespace ZmqReactor
 
       reactor->handle_event(hi, HasEvents::YES, false);
     }
+//std::cout << time(0) << ">" <<"<<< Reactor: in immediate_callback, handled\n";
 
     reactor->update_immediate_timeout();
   }
@@ -188,18 +193,26 @@ namespace ZmqReactor
   LibEvent::handle_event(
     HandlerInfo* hi, HasEvents::Value has_ev, bool update_immediate)
   {
+//std::cout << time(0) << ">" <<"Reactor: handle_event, has_ev=" << has_ev << ", update_immediate=" << update_immediate << "\n";
     //perform callback?
+    now_handled_ = hi;
+
     if (has_ev != HasEvents::NO)
     {
       const bool should_continue = hi->fun_(hi->arg_);
       if (!should_continue)
       {
-        ::event_base_loopbreak(hi->reactor_->base_);
-        hi->reactor_->poll_result_ = CANCELLED;
+        ::event_base_loopbreak(base_);
+        poll_result_ = CANCELLED;
       }
       else
       {
-        hi->reactor_->poll_result_ = OK;
+        poll_result_ = OK;
+      }
+      if (!now_handled_) //handler has just been removed in callback
+      {
+        //timeouts are up to date
+        return HasEvents::NO;
       }
       has_ev = has_actual_events(hi); //again
     }
@@ -208,6 +221,7 @@ namespace ZmqReactor
     {
       if (hi->status_ == HandlerInfo::TRIGGERED)
       {
+//std::cout << time(0) << ">" <<"Reactor: handle_event: triggered to waiting\n";
         triggered_handlers_.dequeue(hi);
         hi->status_ = HandlerInfo::WAITING;
         waiting_handlers_.enqueue(hi);
@@ -221,6 +235,7 @@ namespace ZmqReactor
     {
       if (hi->status_ == HandlerInfo::WAITING)
       {
+//std::cout << time(0) << ">" <<"Reactor: handle_event: waiting to triggered\n";
         waiting_handlers_.dequeue(hi);
         hi->status_ = HandlerInfo::TRIGGERED;
         triggered_handlers_.enqueue(hi);
@@ -230,6 +245,8 @@ namespace ZmqReactor
         }
       }
     }
+//std::cout << time(0) << ">" <<"Reactor: handle_event return " << has_ev << "\n";
+    now_handled_ = 0;
     return has_ev;
   }
 
@@ -238,33 +255,26 @@ namespace ZmqReactor
   {
     HandlerInfo* hi = static_cast<HandlerInfo*>(arg);
     assert(fd == hi->arg_.fd);
-
+//std::cout << time(0) << ">" <<time(0) << ": ----> Reactor: in event_callback, fd=" << fd << "\n";
     hi->arg_.events = events_to_reactor(event);
 
     hi->reactor_->handle_event(
       hi, hi->reactor_->has_actual_events(hi), true);
+//std::cout << time(0) << ">" <<"----< Reactor: exit event_callback, fd=" << fd << "\n";
   }
 
   void
   LibEvent::update_immediate_timeout()
   {
-    if (!event_immediate_scheduled_)
+//std::cout << time(0) << ">" <<">> Reactor: in update_immediate_timeout...\n";
+    if (triggered_handlers_.head())
     {
-      if (triggered_handlers_.head())
-      {
-        timeval tv = {0, 0};
-        ::event_add(&event_immediate_, &tv);
-        event_immediate_scheduled_ = true;
-      }
+//std::cout << time(0) << ">" <<"Reactor: scheduling timeout\n";
+
+      timeval tv = {0, 0};
+      ::event_add(&event_immediate_, &tv);
     }
-    else
-    {
-      if (!triggered_handlers_.head())
-      {
-        ::event_del(&event_immediate_);
-        event_immediate_scheduled_ = false;
-      }
-    }
+//std::cout << time(0) << ">" <<"<< Reactor: after update_immediate_timeout...\n";
   }
 
   void
@@ -276,6 +286,7 @@ namespace ZmqReactor
     ::event_add(&hi->event_, 0);
 
     HasEvents::Value has_ev = has_actual_events(hi);
+//std::cout << time(0) << ">" <<"<< Reactor: do_add_handler, sock=" << hi->arg_.socket << ", fd=" << hi->arg_.fd << ", has_ev=" << has_ev << "\n";
     switch (has_ev)
     {
     case HasEvents::YES:
@@ -298,8 +309,27 @@ namespace ZmqReactor
       ::event_del(&hi->event_);
       get_queue(hi).dequeue(hi);
       delete hi;
+      if (now_handled_ == hi)
+      {
+        now_handled_ = 0;
+      }
       update_immediate_timeout();
     }
+  }
+
+  bool
+  LibEvent::force_check_events(const HandlerDesc& hd)
+  {
+    if (hd.hi_ && hd.hi_->status_ == HandlerInfo::WAITING &&
+      has_actual_events(hd.hi_) == HasEvents::YES)
+    {
+      hd.hi_->status_ = HandlerInfo::TRIGGERED;
+      waiting_handlers_.dequeue(hd.hi_);
+      triggered_handlers_.enqueue(hd.hi_);
+      update_immediate_timeout();
+      return true;
+    }
+    return false;
   }
 
   size_t

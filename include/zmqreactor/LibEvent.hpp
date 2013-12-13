@@ -8,6 +8,8 @@
 #define ZMQREACTOR_LIBEVENT_HPP_
 
 #include "zmqreactor/common.hpp"
+#include "zmqreactor/LibEvent.fwd.hpp"
+#include "zmqreactor/details/NonCopyable.hpp"
 #include "zmqreactor/details/LinkedQueue.hpp"
 
 #include <tr1/functional>
@@ -17,69 +19,71 @@
 
 namespace ZmqReactor
 {
+  struct LibEventBase::HandlerInfo :
+    public Private::LinkedBase<LibEventBase::HandlerInfo>
+  {
+    typedef std::tr1::function<bool (ZmqReactor::Arg)> Fun;
+
+    Arg arg_; //socket, fd, events
+    LibEvent* reactor_;
+    Fun fun_;
+
+    short expected_events_; //in reactor terms
+
+    struct event event_;
+
+    enum Status
+    {
+      WAITING, TRIGGERED
+    };
+
+    Status status_;
+
+    template <typename Fun>
+    inline
+    HandlerInfo(LibEvent* reactor, const Fun& fun, short expected_events) :
+      reactor_(reactor), fun_(fun),
+      expected_events_(expected_events), status_(WAITING)
+    {}
+
+    inline
+    bool
+    is_zmq() const
+    {
+      return arg_.socket != 0;
+    }
+
+    /**
+     * Edge triggered
+     */
+    inline
+    bool
+    is_et() const
+    {
+      return is_zmq();
+    }
+  };
+
   /**
    * LibEvent-based reactor
    */
-  class LibEvent
+  class LibEvent : public LibEventBase, private Private::NonCopyable
   {
   private:
     event_base* base_;
-
-    struct HandlerInfo : public Private::LinkedBase
-    {
-      typedef std::tr1::function<bool (ZmqReactor::Arg)> Fun;
-
-      Arg arg_; //socket, fd, events
-      LibEvent* reactor_;
-      Fun fun_;
-
-      short expected_events_; //in reactor terms
-
-      struct event event_;
-
-      enum Status
-      {
-        WAITING, TRIGGERED
-      };
-
-      Status status_;
-
-      template <typename Fun>
-      inline
-      HandlerInfo(LibEvent* reactor, const Fun& fun, short expected_events) :
-        reactor_(reactor), fun_(fun),
-        expected_events_(expected_events), status_(WAITING)
-      {}
-
-      inline
-      bool
-      is_zmq() const
-      {
-        return arg_.socket != 0;
-      }
-
-      /**
-       * Edge triggered
-       */
-      inline
-      bool
-      is_et() const
-      {
-        return is_zmq();
-      }
-    };
 
     typedef Private::LinkedQueue<HandlerInfo> HandlerQueue;
 
     HandlerQueue waiting_handlers_;
     HandlerQueue triggered_handlers_;
 
+    HandlerInfo* now_handled_;
+
     class AllHandlersIter;
 
     PollResult poll_result_; //modified from callbacks
 
     struct event event_immediate_;
-    bool event_immediate_scheduled_;
 
     /**
      * Enum struct, never created
@@ -95,28 +99,8 @@ namespace ZmqReactor
       HasEvents();
     };
 
-  public:
-    class HandlerDesc
-    {
-    private:
-      HandlerInfo* hi_;
-      friend class LibEvent;
-
-      explicit
-      HandlerDesc(HandlerInfo* hi) : hi_(hi) {}
-
-    public:
-      HandlerDesc() : hi_(0) {}
-
-      inline
-      bool
-      empty() const
-      {
-        return !hi_;
-      }
-    };
-
   private:
+
     inline
     static
     short
@@ -232,6 +216,22 @@ namespace ZmqReactor
     }
 
     /**
+     * Force check if actual events are pending for the handler and
+     * if so, update its status to TRIGGERED and schedule immediate timeout.
+     * Call it after some operation was performed on socket
+     * outside its callback.
+     */
+    bool
+    force_check_events(const HandlerDesc& hd);
+
+    inline
+    HandlerDesc
+    now_handled() const
+    {
+      return HandlerDesc(now_handled_);
+    }
+
+    /**
      * All HandlerDesc handles are preserved
      */
     inline
@@ -342,6 +342,9 @@ namespace ZmqReactor
     const timeval& tv, const FunT& fun, bool persistent)
   {
     HandlerInfo* hi = new HandlerInfo(this, fun, 0);
+
+    hi->arg_.fd = 0;
+    hi->arg_.socket = 0;
 
     ::event_assign(
       &hi->event_, base_, 0, persistent ? EV_PERSIST : 0,
