@@ -238,7 +238,7 @@ mkhandler(const Fun& f)
 void
 connect_socks(SocketVec& socks)
 {
-  socks.reserve(TOTAL);
+  socks.resize(TOTAL);
   for (int mode = 0; mode < TOTAL; mode++)
   {
     socks[mode] = new zmq::socket_t(context, ZMQ_REP);
@@ -374,7 +374,7 @@ main(int argc, char* argv[])
   Numbers numbers, result;
 
   SocketVec socks;
-  socks.reserve(TOTAL);
+  socks.resize(TOTAL);
   for (int mode = 0; mode < TOTAL; mode++)
   {
     socks[mode] = new zmq::socket_t(context, ZMQ_REQ);

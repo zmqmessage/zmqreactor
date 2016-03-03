@@ -31,6 +31,7 @@ namespace ZmqReactor
     short expected_events_; //in reactor terms
 
     struct event event_;
+    bool enabled_;
 
     enum Status
     {
@@ -43,7 +44,7 @@ namespace ZmqReactor
     inline
     HandlerInfo(LibEvent* reactor, const Fun& fun, short expected_events) :
       reactor_(reactor), fun_(fun),
-      expected_events_(expected_events), status_(WAITING)
+      expected_events_(expected_events), enabled_(true), status_(WAITING)
     {}
 
     inline
@@ -76,6 +77,7 @@ namespace ZmqReactor
 
     HandlerQueue waiting_handlers_;
     HandlerQueue triggered_handlers_;
+    HandlerQueue disabled_handlers_;
 
     HandlerInfo* now_handled_;
 
@@ -128,6 +130,12 @@ namespace ZmqReactor
 
     void
     do_remove_handler(HandlerInfo* hi);
+
+    void
+    do_activate(HandlerInfo* hi);
+
+    void
+    do_deactivate(HandlerInfo* hi);
 
     PollResult
     do_run(int mode, long timeout);
@@ -213,6 +221,37 @@ namespace ZmqReactor
     {
       do_remove_handler(hd.hi_);
       hd.hi_ = 0;
+    }
+
+    inline
+    void
+    disable_handler(HandlerDesc& hd)
+    {
+      if (hd.hi_ && hd.hi_->enabled_)
+      {
+        do_deactivate(hd.hi_);
+        hd.hi_->enabled_ = false;
+        disabled_handlers_.enqueue(hd.hi_);
+      }
+    }
+
+    inline
+    void
+    enable_handler(HandlerDesc& hd)
+    {
+      if (hd.hi_ && !hd.hi_->enabled_)
+      {
+        hd.hi_->enabled_ = true;
+        disabled_handlers_.dequeue(hd.hi_);
+        do_activate(hd.hi_);
+      }
+    }
+
+    inline
+    bool
+    enabled(HandlerDesc& hd)
+    {
+      return (hd.hi_ && hd.hi_->enabled_);
     }
 
     /**

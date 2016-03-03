@@ -278,11 +278,8 @@ namespace ZmqReactor
   }
 
   void
-  LibEvent::do_add_handler(HandlerInfo* hi, short libev_events)
+  LibEvent::do_activate(HandlerInfo* hi)
   {
-    ::event_assign(
-      &hi->event_, base_, hi->arg_.fd, libev_events,
-      &LibEvent::event_callback, hi);
     ::event_add(&hi->event_, 0);
 
     HasEvents::Value has_ev = has_actual_events(hi);
@@ -302,18 +299,33 @@ namespace ZmqReactor
   }
 
   void
+  LibEvent::do_add_handler(HandlerInfo* hi, short libev_events)
+  {
+    ::event_assign(
+      &hi->event_, base_, hi->arg_.fd, libev_events,
+      &LibEvent::event_callback, hi);
+    do_activate(hi);
+  }
+
+  void
+  LibEvent::do_deactivate(HandlerInfo* hi)
+  {
+    ::event_del(&hi->event_);
+    get_queue(hi).dequeue(hi);
+    if (now_handled_ == hi)
+    {
+      now_handled_ = 0;
+    }
+    update_immediate_timeout();
+  }
+
+  void
   LibEvent::do_remove_handler(HandlerInfo* hi)
   {
     if (hi)
     {
-      ::event_del(&hi->event_);
-      get_queue(hi).dequeue(hi);
+      do_deactivate(hi);
       delete hi;
-      if (now_handled_ == hi)
-      {
-        now_handled_ = 0;
-      }
-      update_immediate_timeout();
     }
   }
 
